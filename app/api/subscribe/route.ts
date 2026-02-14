@@ -10,98 +10,60 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email required" }, { status: 400 });
     }
 
-    const headers = {
-      "Content-Type": "application/json",
-      "Authorization": `Klaviyo-API-Key ${process.env.KLAVIYO_PRIVATE_KEY}`,
-      "revision": "2023-10-15"
-    };
-
-    // 1️⃣ Upsert profile
-    await fetch("https://a.klaviyo.com/api/profiles/", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        data: {
-          type: "profile",
-          attributes: { email }
-        }
-      })
-    });
-
-    // 2️⃣ Subscribe profile with explicit consent
-    const subscribeResponse = await fetch(
-        "https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/",
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            data: {
-              type: "profile-subscription-bulk-create-job",
-              attributes: {
-                profiles: {
-                  data: [
-                    {
-                      type: "profile",
-                      attributes: { email }
-                    }
-                  ]
-                },
-                subscriptions: {
-                  email: {
-                    marketing: {
-                      consent: "SUBSCRIBED",
-                      consented_at: new Date().toISOString(),
-                      consent_method: "WEB_FORM"
-                    }
-                  }
-                }
-              }
-            }
-          })
-        }
-      );
-      
-      if (!subscribeResponse.ok) {
-        const errorData = await subscribeResponse.text();
-        console.error("SUBSCRIBE ERROR:", errorData);
-        return NextResponse.json({ error: "Subscribe failed" }, { status: 500 });
-      }
-      
-
-    // 3️⃣ Fetch profile ID
-    const lookupResponse = await fetch(
-      `https://a.klaviyo.com/api/profiles/?filter=equals(email,"${email}")`,
-      { headers }
-    );
-
-    const lookupData = await lookupResponse.json();
-    const profileId = lookupData?.data?.[0]?.id;
-
-    if (!profileId) {
-      return NextResponse.json({ error: "Profile lookup failed" }, { status: 500 });
-    }
-
-    // 4️⃣ Add profile to list
-    await fetch(
-      `https://a.klaviyo.com/api/lists/${LIST_ID}/relationships/profiles/`,
+    const response = await fetch(
+      "https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/",
       {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Klaviyo-API-Key ${process.env.KLAVIYO_PRIV_KEY}`,
+          revision: "2024-10-15",
+        },
         body: JSON.stringify({
-          data: [
-            {
-              type: "profile",
-              id: profileId
-            }
-          ]
-        })
+          data: {
+            type: "profile-subscription-bulk-create-job",
+            attributes: {
+              custom_source: "Website",
+              profiles: {
+                data: [
+                  {
+                    type: "profile",
+                    attributes: {
+                      email,
+                      subscriptions: {
+                        email: {
+                          marketing: {
+                            consent: "SUBSCRIBED",
+                          },
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+            relationships: {
+              list: {
+                data: {
+                  type: "list",
+                  id: LIST_ID,
+                },
+              },
+            },
+          },
+        }),
       }
     );
 
-    return NextResponse.json({ success: true });
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("Klaviyo subscribe error:", errorData);
+      return NextResponse.json({ error: "Subscribe failed" }, { status: 500 });
+    }
 
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("SERVER ERROR:", error);
+    console.error("Server error:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
