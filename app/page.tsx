@@ -1,4 +1,25 @@
+"use client";
+
+import { useState } from "react";
+
 export default function Home() {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const res = await fetch("/api/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    if (res.ok) {
+      setSubmitted(true);
+      setEmail("");
+    }
+  };
   return (
     <main className="bg-[#0b0b0b] text-white">
 
@@ -78,6 +99,7 @@ export default function Home() {
 
 
       {/* EMAIL CAPTURE */}
+      {/* EMAIL CAPTURE */}
       <section className="py-32 px-6 border-t border-gray-800 text-center">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-4xl font-semibold mb-6">
@@ -88,12 +110,16 @@ export default function Home() {
             Early access to drops. Community events. Launch updates.
           </p>
 
-          <form className="flex flex-col sm:flex-row gap-4 justify-center">
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 justify-center">
             <input
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
               className="px-6 py-3 rounded-full bg-[#111111] border border-gray-700 text-white focus:outline-none focus:border-gray-400 w-full sm:w-auto"
+              required
             />
+
             <button
               type="submit"
               className="px-8 py-3 rounded-full border border-gray-500 hover:bg-white hover:text-black transition"
@@ -101,6 +127,12 @@ export default function Home() {
               Join
             </button>
           </form>
+
+          {submitted && (
+            <p className="mt-6 text-green-400">
+              You're on the list. See you at the drop.
+            </p>
+          )}
         </div>
       </section>
 
