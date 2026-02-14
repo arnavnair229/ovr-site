@@ -29,34 +29,44 @@ export async function POST(req: Request) {
     });
 
     // 2️⃣ Subscribe profile with explicit consent
-    await fetch("https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        data: {
-          type: "profile-subscription-bulk-create-job",
-          attributes: {
-            profiles: {
-              data: [
-                {
-                  type: "profile",
-                  attributes: { email }
-                }
-              ]
-            },
-            subscriptions: {
-              email: {
-                marketing: {
-                  consent: "SUBSCRIBED",
-                  consented_at: new Date().toISOString(),
-                  consent_method: "WEB_FORM"
+    const subscribeResponse = await fetch(
+        "https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/",
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            data: {
+              type: "profile-subscription-bulk-create-job",
+              attributes: {
+                profiles: {
+                  data: [
+                    {
+                      type: "profile",
+                      attributes: { email }
+                    }
+                  ]
+                },
+                subscriptions: {
+                  email: {
+                    marketing: {
+                      consent: "SUBSCRIBED",
+                      consented_at: new Date().toISOString(),
+                      consent_method: "WEB_FORM"
+                    }
+                  }
                 }
               }
             }
-          }
+          })
         }
-      })
-    });
+      );
+      
+      if (!subscribeResponse.ok) {
+        const errorData = await subscribeResponse.text();
+        console.error("SUBSCRIBE ERROR:", errorData);
+        return NextResponse.json({ error: "Subscribe failed" }, { status: 500 });
+      }
+      
 
     // 3️⃣ Fetch profile ID
     const lookupResponse = await fetch(
